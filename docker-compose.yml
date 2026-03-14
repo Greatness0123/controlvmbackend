@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  # The Control Web Backend
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: control-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # This allows the backend to start and stop VM containers on the Azure host
+      - /var/run/docker.sock:/var/run/docker.sock
+    env_file:
+      - ./backend/.env
+    restart: always
+    networks:
+      - control-net
+
+  # This is a dummy service just to ensure the VM image is built on the host
+  # The backend expects an image named "control-vm" to exist
+  vm-base-image:
+    build:
+      context: ./vm
+      dockerfile: Dockerfile
+    image: control-vm
+    restart: "no"
+    entrypoint: ["echo", "Base VM image built successfully"]
+    networks:
+      - control-net
+
+networks:
+  control-net:
+    driver: bridge
