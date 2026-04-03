@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # Caddy — Reverse Proxy with automatic HTTPS
+  # Set DOMAIN env var to your domain (e.g. api.yourdomain.com)
+  caddy:
+    image: caddy:2-alpine
+    container_name: control-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - DOMAIN=control.southafricanorth.cloudapp.azure.com
+    depends_on:
+      - backend
+    restart: always
+    networks:
+      - control-net
+
+  # The Control Web Backend
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: control-backend
+    # Port 8000 is only exposed to other containers (via control-net),
+    # NOT to the host. All external access goes through Caddy.
+    expose:
+      - "8000"
+    # Also keep direct access on 8000 for localhost development
+    ports:
+      - "8000:8000"
+    volumes:
+      # This allows the backend to start and stop VM containers on the Azure host
+      - /var/run/docker.sock:/var/run/docker.sock
+    env_file:
+      - ./backend/.env
+    environment:
+      # Allows backend container to connect to ports on the Docker host (where VM containers are mapped)
+      - DOCKER_HOST_IP=172.17.0.1
+    # On Linux, adds host.docker.internal -> host-gateway so the container can reach host ports
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: always
+    networks:
+      - control-net
+
+  # This is a dummy service just to ensure the VM image is built on the host
+  # The backend expects an image named "control-vm" to exist
+  vm-base-image:
+    build:
+      context: ./vm
+      dockerfile: Dockerfile
+    image: control-vm
+    restart: "no"
+    entrypoint: ["echo", "Base VM image built successfully"]
+    networks:
+      - control-net
+
+networks:
+  control-net:
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:
+
