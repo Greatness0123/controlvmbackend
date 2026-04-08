@@ -1,7 +1,0 @@
-# Caddy reverse proxy for the Control backend.
-# Auto-provisions Let's Encrypt TLS for the Azure domain.
-
-control.southafricanorth.cloudapp.azure.com {
-    # Reverse-proxy all traffic (HTTP + WebSocket) to the backend
-    reverse_proxy backend:8000
-}
